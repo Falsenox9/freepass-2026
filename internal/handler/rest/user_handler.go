@@ -18,17 +18,6 @@ type UserHandler struct {
 func NewUserHandler(userService service.UserService) *UserHandler {
 	return &UserHandler{userService: userService}
 }
-
-// Register godoc
-// @Summary Register a new user
-// @Description Register a new user account
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param request body model.RegisterRequest true "Register request"
-// @Success 201 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Router /auth/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -49,16 +38,6 @@ func (h *UserHandler) Register(c *gin.Context) {
 	response.Success(c, http.StatusCreated, "User registered successfully", user)
 }
 
-// Login godoc
-// @Summary Login user
-// @Description Login with email and password
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param request body model.LoginRequest true "Login request"
-// @Success 200 {object} response.Response
-// @Failure 401 {object} response.Response
-// @Router /auth/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -79,15 +58,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	response.Success(c, http.StatusOK, "Login successful", loginResp)
 }
 
-// GetProfile godoc
-// @Summary Get user profile
-// @Description Get current user's profile
-// @Tags user
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {object} response.Response
-// @Failure 401 {object} response.Response
-// @Router /users/profile [get]
+
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 
@@ -100,17 +71,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	response.Success(c, http.StatusOK, "Profile retrieved successfully", user)
 }
 
-// UpdateProfile godoc
-// @Summary Update user profile
-// @Description Update current user's profile
-// @Tags user
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param request body model.UpdateProfileRequest true "Update profile request"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Router /users/profile [put]
+
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 
@@ -162,9 +123,8 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 	response.Success(c, http.StatusOK, "Password updated successfully", nil)
 }
 
-// RegisterRoutes registers all user routes
+
 func (h *UserHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
-	// Public routes
 	auth := r.Group("/auth")
 	{
 		auth.POST("/register", h.Register)
