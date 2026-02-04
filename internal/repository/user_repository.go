@@ -1,49 +1,41 @@
 package repository
 
 import (
-	"freepass-2026/entity"
+    "freepass-2026/entity"
+    "freepass-2026/model"
 
-	"github.com/google/uuid"
-	"gorm.io/gorm"
+    "gorm.io/gorm"
 )
 
-type UserRepository interface {
-	Create(user *entity.User) error
-	FindByID(id uuid.UUID) (*entity.User, error)
-	FindByEmail(email string) (*entity.User, error)
-	Update(user *entity.User) error
+type IUserRepository interface {
+    CreateUser(tx *gorm.DB, user *entity.User) error
+    GetUser(param model.UserParam) (*entity.User, error)
 }
 
-type userRepository struct {
-	db *gorm.DB
+type UserRepository struct {
+    db *gorm.DB
 }
 
-func NewUserRepository(db *gorm.DB) UserRepository {
-	return &userRepository{db: db}
+func NewUserRepository(db *gorm.DB) IUserRepository {
+    return &UserRepository{db: db}
 }
 
-func (r *userRepository) Create(user *entity.User) error {
-	return r.db.Create(user).Error
+func (r *UserRepository) CreateUser(tx *gorm.DB, user *entity.User) error {
+    err := tx.Debug().Create(&user).Error
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
 
-func (r *userRepository) FindByID(id uuid.UUID) (*entity.User, error) {
-	var user entity.User
-	err := r.db.Where("id = ?", id).First(&user).Error
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
+func (r *UserRepository) GetUser(param model.UserParam) (*entity.User, error) {
+    var user *entity.User
 
-func (r *userRepository) FindByEmail(email string) (*entity.User, error) {
-	var user entity.User
-	err := r.db.Where("email = ?", email).First(&user).Error
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
+    err := r.db.Debug().Where(&param).First(&user).Error
+    if err != nil {
+        return nil, err
+    }
 
-func (r *userRepository) Update(user *entity.User) error {
-	return r.db.Save(user).Error
+    return user, nil
 }

@@ -1,52 +1,45 @@
 package response
 
 import (
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
+type Status struct {
+    Code      int  `json:"code"`
+    IsSuccess bool `json:"isSuccess"`
+}
+
 type Response struct {
-	Success bool        `json:"success"`
-	Message string      `json:"message,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+    Status  Status      `json:"status"`
+    Message string      `json:"message"`
+    Data    interface{} `json:"data"`
 }
 
-type PaginatedResponse struct {
-	Success    bool        `json:"success"`
-	Data       interface{} `json:"data"`
-	Page       int         `json:"page"`
-	Limit      int         `json:"limit"`
-	TotalItems int64       `json:"total_items"`
-	TotalPages int         `json:"total_pages"`
+func Success(ctx *gin.Context, code int, message string, data any) {
+    ctx.JSON(code, Response{
+        Status: Status{
+            Code:      code,
+            IsSuccess: true,
+        },
+        Message: message,
+        Data:    data,
+    })
 }
 
-func Success(c *gin.Context, statusCode int, message string, data interface{}) {
-	c.JSON(statusCode, Response{
-		Success: true,
-		Message: message,
-		Data:    data,
-	})
-}
+func Error(ctx *gin.Context, code int, message string, err error) {
+    var errorData interface{}
+    if err != nil {
+        errorData = err.Error()
+    } else {
+        errorData = nil
+    }
 
-func Error(c *gin.Context, statusCode int, errMessage string) {
-	c.JSON(statusCode, Response{
-		Success: false,
-		Error:   errMessage,
-	})
-}
-
-func Paginated(c *gin.Context, statusCode int, data interface{}, page, limit int, totalItems int64) {
-	totalPages := int(totalItems) / limit
-	if int(totalItems)%limit > 0 {
-		totalPages++
-	}
-
-	c.JSON(statusCode, PaginatedResponse{
-		Success:    true,
-		Data:       data,
-		Page:       page,
-		Limit:      limit,
-		TotalItems: totalItems,
-		TotalPages: totalPages,
-	})
+    ctx.JSON(code, Response{
+        Status: Status{
+            Code:      code,
+            IsSuccess: false,
+        },
+        Message: message,
+        Data:    errorData,
+    })
 }

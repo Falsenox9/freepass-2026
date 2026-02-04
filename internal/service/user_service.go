@@ -1,161 +1,133 @@
 package service
 
 import (
-	"errors"
+    "errors"
+    "freepass-2026/entity"
+    "freepass-2026/internal/repository"
+    "freepass-2026/model"
+    "freepass-2026/pkg/bcrypt"
+    "freepass-2026/pkg/database/mariadb"
+    "freepass-2026/pkg/jwt"
 
-	"freepass-2026/entity"
-	"freepass-2026/internal/repository"
-	"freepass-2026/model"
-	"freepass-2026/pkg/bcrypt"
-	"freepass-2026/pkg/jwt"
-
-	"github.com/google/uuid"
-	"gorm.io/gorm"
+    "github.com/google/uuid"
+    "gorm.io/gorm"
 )
 
-var (
-	ErrUserNotFound       = errors.New("user not found")
-	ErrEmailAlreadyExists = errors.New("email already exists")
-	ErrInvalidCredentials = errors.New("invalid email or password")
-)
-
-type UserService interface {
-	Register(req *model.RegisterRequest) (*model.UserResponse, error)
-	Login(req *model.LoginRequest) (*model.LoginResponse, error)
-	GetProfile(userID uuid.UUID) (*model.UserResponse, error)
-	UpdateProfile(userID uuid.UUID, req *model.UpdateProfileRequest) (*model.UserResponse, error)
-	UpdatePassword(userID uuid.UUID, req *model.UpdatePasswordRequest) error
+type IUserService interface {
+    RegisterUser(param model.UserRegisterParam) (*model.UserRegisterResponse, error)
+    LoginUser(param model.UserLoginParam) (*model.UserLoginResponse, error)
+    GetUser(param model.UserParam) (*entity.User, error)
 }
 
-type userService struct {
-	userRepo   repository.UserRepository
-	jwtService *jwt.JWTService
+type UserService struct {
+    db             *gorm.DB
+    userRepository repository.IUserRepository
+    bcrypt         bcrypt.Interface
+    jwtAuth        jwt.Interface
 }
 
-func NewUserService(userRepo repository.UserRepository, jwtService *jwt.JWTService) UserService {
-	return &userService{
-		userRepo:   userRepo,
-		jwtService: jwtService,
-	}
+func NewUserService(userRepository repository.IUserRepository, bcrypt bcrypt.Interface, jwtAuth jwt.Interface) IUserService {
+    return &UserService{
+        db:             mariadb.Connection,
+        userRepository: userRepository,
+        bcrypt:         bcrypt,
+        jwtAuth:        jwtAuth,
+    }
 }
 
-func (s *userService) Register(req *model.RegisterRequest) (*model.UserResponse, error) {
-	_, err := s.userRepo.FindByEmail(req.Email)
-	if err == nil {
-		return nil, ErrEmailAlreadyExists
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
+func (u *UserService) RegisterUser(param model.UserRegisterParam) (*model.UserRegisterResponse, error) {
+    tx := u.db.Begin()
+    defer tx.Rollback()
 
-	hashedPassword, err := bcrypt.HashPassword(req.Password)
-	if err != nil {
-		return nil, err
-	}
+    _, err := u.userRepository.GetUser(model.UserParam{
+        Email: param.Email,
+    })
+    if err == nil {
+        return nil, errors.New("email already exists")
+    }
 
-	user := &entity.User{
-		ID:       uuid.New(),
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: hashedPassword,
-		Phone:    req.Phone,
-		RoleID:   req.RoleID,
-	}
+    userID, err := uuid.NewUUID()
+    if err != nil {
+        return nil, err
+    }
 
-	if err := s.userRepo.Create(user); err != nil {
-		return nil, err
-	}
+    if param.Password != param.ConfirmPassword {
+        return nil, errors.New("password not match")
+    }
 
-	return toUserResponse(user), nil
+    hashPassword, err := u.bcrypt.GenerateFromPassword(param.Password)
+    if err != nil {
+        return nil, err
+    }
+
+    user := &entity.User{
+        UserID:   userID,
+        RoleID:   2, // Regular user role
+        Email:    param.Email,
+        Password: hashPassword,
+    }
+
+    err = u.userRepository.CreateUser(tx, user)
+    if err != nil {
+        return nil, err
+    }
+
+    err = tx.Commit().Error
+    if err != nil {
+        return nil, err
+    }
+
+    response := &model.UserRegisterResponse{
+        Email: user.Email,
+    }
+
+    return response, nil
 }
 
-func (s *userService) Login(req *model.LoginRequest) (*model.LoginResponse, error) {
-	user, err := s.userRepo.FindByEmail(req.Email)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrInvalidCredentials
-		}
-		return nil, err
-	}
+func (u *UserService) LoginUser(param model.UserLoginParam) (*model.UserLoginResponse, error) {
+    tx := u.db.Begin()
+    defer tx.Rollback()
 
-	if !bcrypt.ComparePassword(user.Password, req.Password) {
-		return nil, ErrInvalidCredentials
-	}
+    user, err := u.userRepository.GetUser(model.UserParam{
+        Email: param.Email,
+    })
+    if err != nil {
+        return nil, errors.New("email or password is wrong")
+    }
 
-	token, err := s.jwtService.GenerateToken(user)
-	if err != nil {
-		return nil, err
-	}
+    err = u.bcrypt.CompareAndHashPassword(user.Password, param.Password)
+    if err != nil {
+        return nil, errors.New("email or password is wrong")
+    }
 
-	return &model.LoginResponse{
-		Token: token,
-		User:  *toUserResponse(user),
-	}, nil
+    token, err := u.jwtAuth.CreateJWTToken(user.UserID, false)
+    if err != nil {
+        return nil, err
+    }
+
+    response := &model.UserLoginResponse{
+        Token: token,
+    }
+
+    return response, nil
 }
 
-func (s *userService) GetProfile(userID uuid.UUID) (*model.UserResponse, error) {
-	user, err := s.userRepo.FindByID(userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
-		}
-		return nil, err
-	}
-
-	return toUserResponse(user), nil
+func (u *UserService) GetUser(param model.UserParam) (*entity.User, error) {
+    return u.userRepository.GetUser(param)
 }
 
-func (s *userService) UpdateProfile(userID uuid.UUID, req *model.UpdateProfileRequest) (*model.UserResponse, error) {
-	user, err := s.userRepo.FindByID(userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
-		}
-		return nil, err
-	}
+func (u *UserService) GetUserProfile(userId uuid.UUID) (*model.UserProfile, error) {
+    user, err := u.userRepository.GetUser(model.UserParam{
+        UserID: userId,
+    })
+    if err != nil {
+        return nil, err
+    }
 
-	if req.Name != "" {
-		user.Name = req.Name
-	}
-	if req.Phone != "" {
-		user.Phone = req.Phone
-	}
+    response := &model.UserProfile{
+        FullName: user.FullName,
+        Email:    user.Email,
+    }
 
-	if err := s.userRepo.Update(user); err != nil {
-		return nil, err
-	}
-
-	return toUserResponse(user), nil
-}
-
-func (s *userService) UpdatePassword(userID uuid.UUID, req *model.UpdatePasswordRequest) error {
-	user, err := s.userRepo.FindByID(userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrUserNotFound
-		}
-		return err
-	}
-
-	if !bcrypt.ComparePassword(user.Password, req.OldPassword) {
-		return ErrInvalidCredentials
-	}
-
-	hashedPassword, err := bcrypt.HashPassword(req.NewPassword)
-	if err != nil {
-		return err
-	}
-
-	user.Password = hashedPassword
-	return s.userRepo.Update(user)
-}
-
-func toUserResponse(user *entity.User) *model.UserResponse {
-	return &model.UserResponse{
-		ID:     user.ID.String(),
-		Name:   user.Name,
-		Email:  user.Email,
-		Phone:  user.Phone,
-		RoleID: user.RoleID,
-	}
+    return response, nil
 }

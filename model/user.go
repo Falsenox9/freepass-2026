@@ -1,37 +1,35 @@
 package model
 
-type RegisterRequest struct {
-	Name     string `json:"name" binding:"required,min=2,max=100"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	Phone    string `json:"phone"`
-	RoleID   int    `json:"role_id" binding:"required"`
+import (
+    "github.com/google/uuid"
+)
+
+type UserParam struct {
+    UserID   uuid.UUID `json:"-"`
+    FullName string    `json:"-"`
+    Email    string    `json:"-"`
 }
 
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+type UserRegisterParam struct {
+    Email           string `json:"email" binding:"required,email"`
+    Password        string `json:"password" binding:"required,min=8"`
+    ConfirmPassword string `json:"confirm_password" binding:"required,min=8"`
 }
 
-type LoginResponse struct {
-	Token string       `json:"token"`
-	User  UserResponse `json:"user"`
+type UserRegisterResponse struct {
+    Email string `json:"email"`
 }
 
-type UserResponse struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Phone  string `json:"phone"`
-	RoleID int    `json:"role_id"`
+type UserLoginParam struct {
+    Email    string `json:"email" binding:"required"`
+    Password string `json:"password" binding:"required"`
 }
 
-type UpdateProfileRequest struct {
-	Name  string `json:"name" binding:"omitempty,min=2,max=100"`
-	Phone string `json:"phone"`
+type UserLoginResponse struct {
+    Token string `json:"token"`
 }
 
-type UpdatePasswordRequest struct {
-	OldPassword string `json:"old_password" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
+type UserProfile struct {
+    FullName *string `json:"full_name,omitempty"`
+    Email    string  `json:"email"`
 }

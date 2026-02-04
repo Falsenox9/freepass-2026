@@ -1,74 +1,94 @@
 package jwt
 
 import (
-	"errors"
-	"time"
+    "errors"
+    "freepass-2026/entity"
+    "log"
+    "os"
+    "strconv"
+    "time"
 
-	"freepass-2026/entity"
-
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
+    "github.com/gin-gonic/gin"
+    "github.com/golang-jwt/jwt/v5"
+    "github.com/google/uuid"
 )
 
-var (
-	ErrInvalidToken = errors.New("invalid token")
-	ErrExpiredToken = errors.New("token has expired")
-)
+type Interface interface {
+    CreateJWTToken(userID uuid.UUID, isAdmin bool) (string, error)
+    ValidateToken(tokenString string) (uuid.UUID, error)
+    GetLoginUser(c *gin.Context) (*entity.User, error)
+}
+
+type jsonWebToken struct {
+    SecretKey   string
+    ExpiredTime time.Duration
+}
 
 type Claims struct {
-	UserID uuid.UUID `json:"user_id"`
-	Email  string    `json:"email"`
-	RoleID int       `json:"role_id"`
-	jwt.RegisteredClaims
+    UserID  uuid.UUID
+    isAdmin bool
+    jwt.RegisteredClaims
 }
 
-type JWTService struct {
-	secretKey  string
-	expireHour int
+func Init() Interface {
+    secretKey := os.Getenv("JWT_SECRET_KEY")
+    expiredTime, err := strconv.Atoi(os.Getenv("JWT_EXP_TIME"))
+
+    if err != nil {
+        log.Fatalf("Failed to load JWT expired time : %v", err)
+    }
+
+    return &jsonWebToken{
+        SecretKey:   secretKey,
+        ExpiredTime: time.Duration(expiredTime) * time.Hour,
+    }
 }
 
-func NewJWTService(secretKey string, expireHour int) *JWTService {
-	return &JWTService{
-		secretKey:  secretKey,
-		expireHour: expireHour,
-	}
+func (j *jsonWebToken) CreateJWTToken(userID uuid.UUID, isAdmin bool) (string, error) {
+    claims := &Claims{
+        UserID:  userID,
+        isAdmin: isAdmin,
+        RegisteredClaims: jwt.RegisteredClaims{
+            ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.ExpiredTime)),
+        },
+    }
+
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+    tokenString, err := token.SignedString([]byte(j.SecretKey))
+    if err != nil {
+        return "", err
+    }
+
+    return tokenString, nil
 }
 
-func (s *JWTService) GenerateToken(user *entity.User) (string, error) {
-	claims := &Claims{
-		UserID: user.ID,
-		Email:  user.Email,
-		RoleID: user.RoleID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(s.expireHour) * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-		},
-	}
+func (j *jsonWebToken) ValidateToken(tokenString string) (uuid.UUID, error) {
+    var (
+        claim  Claims
+        userID uuid.UUID
+    )
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(s.secretKey))
+    token, err := jwt.ParseWithClaims(tokenString, &claim, func(t *jwt.Token) (interface{}, error) {
+        return []byte(j.SecretKey), nil
+    })
+
+    if err != nil {
+        return userID, err
+    }
+
+    if !token.Valid {
+        return userID, errors.New("invalid token")
+    }
+
+    userID = claim.UserID
+    return userID, nil
 }
 
-func (s *JWTService) ValidateToken(tokenString string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, ErrInvalidToken
-		}
-		return []byte(s.secretKey), nil
-	})
+func (j *jsonWebToken) GetLoginUser(c *gin.Context) (*entity.User, error) {
+    user, ok := c.Get("user")
+    if !ok {
+        return &entity.User{}, errors.New("user not found")
+    }
 
-	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, ErrExpiredToken
-		}
-		return nil, ErrInvalidToken
-	}
-
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return nil, ErrInvalidToken
-	}
-
-	return claims, nil
+    return user.(*entity.User), nil
 }

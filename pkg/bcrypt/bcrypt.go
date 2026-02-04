@@ -1,21 +1,32 @@
 package bcrypt
 
 import (
-	"golang.org/x/crypto/bcrypt"
+    "golang.org/x/crypto/bcrypt"
 )
 
-const cost = 12
-
-// HashPassword hashes a plain text password
-func HashPassword(password string) (string, error) {
-	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), cost)
-	if err != nil {
-		return "", err
-	}
-	return string(hashedBytes), nil
+type Interface interface {
+    GenerateFromPassword(password string) (string, error)
+    CompareAndHashPassword(hashedPassword, password string) error
 }
 
-func ComparePassword(hashedPassword, password string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	return err == nil
+type bcryptHash struct {
+    cost int
+}
+
+func Init() Interface {
+    return &bcryptHash{
+        cost: 12,
+    }
+}
+
+func (b *bcryptHash) GenerateFromPassword(password string) (string, error) {
+    hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), b.cost)
+    if err != nil {
+        return "", err
+    }
+    return string(hashedBytes), nil
+}
+
+func (b *bcryptHash) CompareAndHashPassword(hashedPassword, password string) error {
+    return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }

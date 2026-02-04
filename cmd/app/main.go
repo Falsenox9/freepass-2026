@@ -1,72 +1,54 @@
 package main
 
 import (
-	"log"
+    "log"
 
-	"freepass-2026/internal/handler/rest"
-	"freepass-2026/internal/repository"
-	"freepass-2026/internal/service"
-	"freepass-2026/pkg/config"
-	"freepass-2026/pkg/database/mariadb"
-	"freepass-2026/pkg/jwt"
-	"freepass-2026/pkg/middleware"
-
-	"github.com/gin-gonic/gin"
+    "freepass-2026/internal/handler/rest"
+    "freepass-2026/internal/repository"
+    "freepass-2026/internal/service"
+    "freepass-2026/pkg/bcrypt"
+    "freepass-2026/pkg/config"
+    "freepass-2026/pkg/database/mariadb"
+    "freepass-2026/pkg/jwt"
+    "freepass-2026/pkg/middleware"
 )
 
 func main() {
-	// Load configuration
-	cfg := config.Load()
+    // Load config
+    cfg := config.Load()
 
-	// Setup Gin mode
-	gin.SetMode(cfg.Server.Mode)
+    // Initialize database
+    db, err := mariadb.NewConnection(cfg)
+    if err != nil {
+        log.Fatalf("Failed to connect to database: %v", err)
+    }
 
-	// Initialize database connection
-	db, err := mariadb.NewConnection(cfg)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
+    // Auto migrate
+    if err := mariadb.AutoMigrate(db); err != nil {
+        log.Fatalf("Failed to migrate database: %v", err)
+    }
 
-	// Auto migrate database schemas
-	if err := mariadb.AutoMigrate(db); err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
-	}
+    // Initialize bcrypt
+    bcryptService := bcrypt.Init()
 
-	// Initialize JWT service
-	jwtService := jwt.NewJWTService(cfg.JWT.Secret, cfg.JWT.ExpireHour)
+    // Initialize JWT
+    jwtService := jwt.Init()
 
-	// Initialize repositories
-	userRepo := repository.NewUserRepository(db)
+    // Initialize repositories
+    repo := repository.NewRepository(db)
 
-	// Initialize services
-	userService := service.NewUserService(userRepo, jwtService)
+    // Initialize services
+    svc := service.NewService(repo, bcryptService, jwtService)
 
-	// Initialize handlers
-	userHandler := rest.NewUserHandler(userService)
+    // Initialize middleware
+    mw := middleware.Init(svc, jwtService)
 
-	// Initialize middleware
-	authMiddleware := middleware.NewAuthMiddleware(jwtService)
+    // Initialize REST handler
+    restHandler := rest.NewRest(svc, mw)
 
-	// Setup Gin router
-	router := gin.Default()
+    // Mount endpoints
+    restHandler.MountEndPoint()
 
-	// API v1 routes
-	api := router.Group("/api/v1")
-	{
-		userHandler.RegisterRoutes(api, authMiddleware)
-	}
-
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "healthy",
-			"service": "canteen-api",
-		})
-	})
-
-	// Start server
-	log.Printf("Server starting on port %s", cfg.Server.Port)
-	if err := router.Run(":" + cfg.Server.Port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+    // Run server
+    restHandler.Run()
 }
