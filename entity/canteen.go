@@ -1,22 +1,21 @@
 package entity
 
 import (
-    "time"
+	"time"
 
-    "github.com/google/uuid"
+	"github.com/google/uuid"
 )
 
 type Canteen struct {
-    CanteenID   uuid.UUID  `gorm:"type:char(36);primaryKey" json:"canteen_id"`
-    OwnerID     uuid.UUID  `gorm:"type:char(36);not null;uniqueIndex" json:"owner_id"`
-    CanteenName string     `gorm:"type:varchar(100);not null" json:"canteen_name"`
-    Description *string    `gorm:"type:text" json:"description"`
-    Location    *string    `gorm:"type:varchar(255)" json:"location"`
-    PhoneNumber *string    `gorm:"type:varchar(20)" json:"phone_number"`
-    CreatedAt   time.Time  `gorm:"autoCreateTime" json:"created_at"`
-    UpdatedAt   time.Time  `gorm:"autoUpdateTime" json:"updated_at"`
-    DeletedAt   *time.Time `gorm:"index" json:"deleted_at,omitempty"`
+	CanteenID   uuid.UUID `json:"canteen_id" gorm:"type:uuid;primaryKey"`
+	OwnerID     uuid.UUID `json:"owner_id" gorm:"type:uuid;not null;unique"`
+	CanteenName string    `json:"canteen_name" gorm:"type:varchar(255);not null"`
+	Description *string   `json:"description" gorm:"type:text"`
+	Location    *string   `json:"location" gorm:"type:varchar(255)"`
+	PhoneNumber *string   `json:"phone_number" gorm:"type:varchar(20)"`
+	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
-    Owner *User   `gorm:"foreignKey:OwnerID;references:UserID" json:"owner,omitempty"`
-    Foods []*Food `gorm:"foreignKey:CanteenID;references:CanteenID" json:"foods,omitempty"`
+	// Relasi dengan Food (one to many)
+	Foods []Food `json:"foods" gorm:"foreignKey:CanteenID"`
 }
