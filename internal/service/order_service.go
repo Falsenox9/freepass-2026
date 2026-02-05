@@ -15,6 +15,7 @@ type IOrderService interface {
 	CreateOrder(userID uuid.UUID, param model.CreateOrderParam) (*model.CreateOrderResponse, error)
 	GetUserOrders(userID uuid.UUID) (*model.GetOrderListResponse, error)
 	GetCanteenOrders(ownerID uuid.UUID) (*model.GetOrderListResponse, error)
+	PayOrder(userID uuid.UUID, orderID uuid.UUID, param model.PayOrderParam) (*model.PayOrderResponse, error)
 }
 
 type OrderService struct {
@@ -102,11 +103,12 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, param model.CreateOrderPara
 	}
 
 	order := &entity.Order{
-		OrderID:    orderID,
-		UserID:     userID,
-		CanteenID:  canteenID,
-		TotalPrice: totalPrice,
-		Status:     "pending",
+		OrderID:       orderID,
+		UserID:        userID,
+		CanteenID:     canteenID,
+		TotalPrice:    totalPrice,
+		Status:        "pending",
+		PaymentStatus: "unpaid",
 	}
 
 	err = s.orderRepository.CreateOrder(tx, order)
@@ -138,11 +140,12 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, param model.CreateOrderPara
 	}
 
 	response := &model.CreateOrderResponse{
-		OrderID:    order.OrderID,
-		CanteenID:  order.CanteenID,
-		Items:      orderItemResponses,
-		TotalPrice: order.TotalPrice,
-		Status:     order.Status,
+		OrderID:       order.OrderID,
+		CanteenID:     order.CanteenID,
+		Items:         orderItemResponses,
+		TotalPrice:    order.TotalPrice,
+		Status:        order.Status,
+		PaymentStatus: order.PaymentStatus,
 	}
 
 	return response, nil
@@ -186,14 +189,23 @@ func (s *OrderService) GetUserOrders(userID uuid.UUID) (*model.GetOrderListRespo
 			canteenName = canteen.CanteenName
 		}
 
+		var paidAtStr *string
+		if order.PaidAt != nil {
+			formatted := order.PaidAt.Format("2006-01-02 15:04:05")
+			paidAtStr = &formatted
+		}
+
 		orderResponses = append(orderResponses, model.GetOrderResponse{
-			OrderID:     order.OrderID,
-			CanteenID:   order.CanteenID,
-			CanteenName: canteenName,
-			Items:       orderItemResponses,
-			TotalPrice:  order.TotalPrice,
-			Status:      order.Status,
-			CreatedAt:   order.CreatedAt.Format("2006-01-02 15:04:05"),
+			OrderID:       order.OrderID,
+			CanteenID:     order.CanteenID,
+			CanteenName:   canteenName,
+			Items:         orderItemResponses,
+			TotalPrice:    order.TotalPrice,
+			Status:        order.Status,
+			PaymentStatus: order.PaymentStatus,
+			PaymentMethod: order.PaymentMethod,
+			PaidAt:        paidAtStr,
+			CreatedAt:     order.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
@@ -205,7 +217,6 @@ func (s *OrderService) GetUserOrders(userID uuid.UUID) (*model.GetOrderListRespo
 }
 
 func (s *OrderService) GetCanteenOrders(ownerID uuid.UUID) (*model.GetOrderListResponse, error) {
-	// Get canteen owned by this user
 	canteen, err := s.adminRepository.GetCanteenByOwnerID(ownerID)
 	if err != nil {
 		return nil, errors.New("canteen not found for this owner")
@@ -242,19 +253,61 @@ func (s *OrderService) GetCanteenOrders(ownerID uuid.UUID) (*model.GetOrderListR
 			})
 		}
 
+		var paidAtStr *string
+		if order.PaidAt != nil {
+			formatted := order.PaidAt.Format("2006-01-02 15:04:05")
+			paidAtStr = &formatted
+		}
+
 		orderResponses = append(orderResponses, model.GetOrderResponse{
-			OrderID:     order.OrderID,
-			CanteenID:   order.CanteenID,
-			CanteenName: canteen.CanteenName,
-			Items:       orderItemResponses,
-			TotalPrice:  order.TotalPrice,
-			Status:      order.Status,
-			CreatedAt:   order.CreatedAt.Format("2006-01-02 15:04:05"),
+			OrderID:       order.OrderID,
+			CanteenID:     order.CanteenID,
+			CanteenName:   canteen.CanteenName,
+			Items:         orderItemResponses,
+			TotalPrice:    order.TotalPrice,
+			Status:        order.Status,
+			PaymentStatus: order.PaymentStatus,
+			PaymentMethod: order.PaymentMethod,
+			PaidAt:        paidAtStr,
+			CreatedAt:     order.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
 	response := &model.GetOrderListResponse{
 		Orders: orderResponses,
+	}
+
+	return response, nil
+}
+
+func (s *OrderService) PayOrder(userID uuid.UUID, orderID uuid.UUID, param model.PayOrderParam) (*model.PayOrderResponse, error) {
+	// Get the order
+	order, err := s.orderRepository.GetOrderByID(orderID)
+	if err != nil {
+		return nil, errors.New("order not found")
+	}
+
+	// Verify order belongs to user
+	if order.UserID != userID {
+		return nil, errors.New("unauthorized to pay this order")
+	}
+
+	// Check if already paid
+	if order.PaymentStatus == "paid" {
+		return nil, errors.New("order already paid")
+	}
+
+	// Update payment status
+	err = s.orderRepository.UpdateOrderPaymentStatus(orderID, "paid", param.PaymentMethod)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &model.PayOrderResponse{
+		OrderID:       orderID,
+		PaymentStatus: "paid",
+		PaymentMethod: param.PaymentMethod,
+		Message:       "Payment successful using " + param.PaymentMethod,
 	}
 
 	return response, nil

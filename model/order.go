@@ -11,6 +11,10 @@ type CreateOrderParam struct {
 	Items []OrderItemParam `json:"items" binding:"required,min=1,dive"`
 }
 
+type PayOrderParam struct {
+	PaymentMethod string `json:"payment_method" binding:"required,oneof=qris card gopay ovo dana shopeepay"`
+}
+
 type OrderItemResponse struct {
 	OrderItemID uuid.UUID `json:"order_item_id"`
 	FoodID      uuid.UUID `json:"food_id"`
@@ -21,23 +25,34 @@ type OrderItemResponse struct {
 }
 
 type CreateOrderResponse struct {
-	OrderID    uuid.UUID           `json:"order_id"`
-	CanteenID  uuid.UUID           `json:"canteen_id"`
-	Items      []OrderItemResponse `json:"items"`
-	TotalPrice int                 `json:"total_price"`
-	Status     string              `json:"status"`
+	OrderID       uuid.UUID           `json:"order_id"`
+	CanteenID     uuid.UUID           `json:"canteen_id"`
+	Items         []OrderItemResponse `json:"items"`
+	TotalPrice    int                 `json:"total_price"`
+	Status        string              `json:"status"`
+	PaymentStatus string              `json:"payment_status"`
 }
 
 type GetOrderResponse struct {
-	OrderID     uuid.UUID           `json:"order_id"`
-	CanteenID   uuid.UUID           `json:"canteen_id"`
-	CanteenName string              `json:"canteen_name"`
-	Items       []OrderItemResponse `json:"items"`
-	TotalPrice  int                 `json:"total_price"`
-	Status      string              `json:"status"`
-	CreatedAt   string              `json:"created_at"`
+	OrderID       uuid.UUID           `json:"order_id"`
+	CanteenID     uuid.UUID           `json:"canteen_id"`
+	CanteenName   string              `json:"canteen_name"`
+	Items         []OrderItemResponse `json:"items"`
+	TotalPrice    int                 `json:"total_price"`
+	Status        string              `json:"status"`
+	PaymentStatus string              `json:"payment_status"`
+	PaymentMethod *string             `json:"payment_method,omitempty"`
+	PaidAt        *string             `json:"paid_at,omitempty"`
+	CreatedAt     string              `json:"created_at"`
 }
 
 type GetOrderListResponse struct {
 	Orders []GetOrderResponse `json:"orders"`
+}
+
+type PayOrderResponse struct {
+	OrderID       uuid.UUID `json:"order_id"`
+	PaymentStatus string    `json:"payment_status"`
+	PaymentMethod string    `json:"payment_method"`
+	Message       string    `json:"message"`
 }
