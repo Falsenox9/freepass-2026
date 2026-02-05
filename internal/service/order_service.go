@@ -116,19 +116,10 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, param model.CreateOrderPara
 		return nil, err
 	}
 
-	for i, orderItem := range orderItems {
+	for _, orderItem := range orderItems {
 		orderItem.OrderID = orderID
 
 		err = s.orderRepository.CreateOrderItem(tx, orderItem)
-		if err != nil {
-			return nil, err
-		}
-
-		newStock := 0
-		food, _ := s.foodRepository.GetFoodByID(orderItem.FoodID)
-		newStock = food.Stock - param.Items[i].Quantity
-
-		err = s.foodRepository.UpdateStock(tx, orderItem.FoodID, newStock)
 		if err != nil {
 			return nil, err
 		}
@@ -295,6 +286,31 @@ func (s *OrderService) PayOrder(userID uuid.UUID, orderID uuid.UUID, param model
 	// Check if already paid
 	if order.PaymentStatus == "paid" {
 		return nil, errors.New("order already paid")
+	}
+
+	// Get order items to reduce stock
+	orderItems, err := s.orderRepository.GetOrderItemsByOrderID(orderID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reduce stock for each item
+	for _, item := range orderItems {
+		food, err := s.foodRepository.GetFoodByID(item.FoodID)
+		if err != nil {
+			return nil, errors.New("food not found")
+		}
+
+		// Check if stock is still available
+		if food.Stock < item.Quantity {
+			return nil, errors.New("insufficient stock for " + food.FoodName)
+		}
+
+		newStock := food.Stock - item.Quantity
+		err = s.foodRepository.UpdateStock(s.db, item.FoodID, newStock)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Update payment status
