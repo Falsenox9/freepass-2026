@@ -143,3 +143,55 @@ func (r *Rest) PayOrder(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, "payment processed successfully", resp)
 }
+
+func (r *Rest) UpdateOrderStatus(c *gin.Context) {
+	var param model.UpdateOrderStatusParam
+
+	ownerID, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "unauthorized", fmt.Errorf("user not authenticated"))
+		return
+	}
+
+	orderIDStr := c.Param("order_id")
+	orderID, err := uuid.Parse(orderIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid order id", err)
+		return
+	}
+
+	err = c.ShouldBindJSON(&param)
+	if err != nil {
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			errorMessages := make([]string, 0)
+			for _, e := range validationErrors {
+				msg := fmt.Sprintf("Field '%s' error: %s", e.Field(), e.Tag())
+				errorMessages = append(errorMessages, msg)
+			}
+			response.Error(c, http.StatusBadRequest, "invalid validation format", fmt.Errorf("%v", errorMessages))
+			return
+		}
+		response.Error(c, http.StatusBadRequest, "failed to bind json", err)
+		return
+	}
+
+	err = r.service.OrderService.UpdateOrderStatus(ownerID.(uuid.UUID), orderID, param)
+	if err != nil {
+		if err.Error() == "order not found" {
+			response.Error(c, http.StatusNotFound, "order not found", err)
+			return
+		}
+		if err.Error() == "canteen not found for this owner" {
+			response.Error(c, http.StatusNotFound, "canteen not found for this owner", err)
+			return
+		}
+		if err.Error() == "unauthorized to update this order" {
+			response.Error(c, http.StatusForbidden, "unauthorized to update this order", err)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "failed to update order status", err)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "order status updated successfully", nil)
+}

@@ -61,6 +61,7 @@ func (r *Rest) MountEndPoint() {
 		canteen.GET("/my-foods", r.GetMyFoods)
 		canteen.PATCH("/food/stock", r.UpdateStock)
 		canteen.GET("/orders", r.GetCanteenOrders)
+		canteen.PATCH("/order/:order_id/status", r.UpdateOrderStatus)
 	}
 
 	public := baseURL.Group("/public")

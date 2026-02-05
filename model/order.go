@@ -15,6 +15,10 @@ type PayOrderParam struct {
 	PaymentMethod string `json:"payment_method" binding:"required,oneof=qris card gopay ovo dana shopeepay"`
 }
 
+type UpdateOrderStatusParam struct {
+	Status string `json:"status" binding:"required,oneof=waiting cooking ready completed"`
+}
+
 type OrderItemResponse struct {
 	OrderItemID uuid.UUID `json:"order_item_id"`
 	FoodID      uuid.UUID `json:"food_id"`

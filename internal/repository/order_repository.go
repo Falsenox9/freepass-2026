@@ -16,6 +16,7 @@ type IOrderRepository interface {
 	GetOrdersByCanteenID(canteenID uuid.UUID) ([]*entity.Order, error)
 	GetOrderByID(orderID uuid.UUID) (*entity.Order, error)
 	UpdateOrderPaymentStatus(orderID uuid.UUID, paymentStatus string, paymentMethod string) error
+	UpdateOrderStatus(orderID uuid.UUID, status string) error
 }
 
 type OrderRepository struct {
@@ -94,6 +95,15 @@ func (r *OrderRepository) UpdateOrderPaymentStatus(orderID uuid.UUID, paymentSta
 		"payment_method": paymentMethod,
 		"paid_at":        now,
 	}).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *OrderRepository) UpdateOrderStatus(orderID uuid.UUID, status string) error {
+	err := r.db.Debug().Model(&entity.Order{}).Where("order_id = ?", orderID).Update("status", status).Error
 	if err != nil {
 		return err
 	}

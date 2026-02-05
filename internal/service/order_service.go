@@ -16,6 +16,7 @@ type IOrderService interface {
 	GetUserOrders(userID uuid.UUID) (*model.GetOrderListResponse, error)
 	GetCanteenOrders(ownerID uuid.UUID) (*model.GetOrderListResponse, error)
 	PayOrder(userID uuid.UUID, orderID uuid.UUID, param model.PayOrderParam) (*model.PayOrderResponse, error)
+	UpdateOrderStatus(ownerID uuid.UUID, orderID uuid.UUID, param model.UpdateOrderStatusParam) error
 }
 
 type OrderService struct {
@@ -272,36 +273,30 @@ func (s *OrderService) GetCanteenOrders(ownerID uuid.UUID) (*model.GetOrderListR
 }
 
 func (s *OrderService) PayOrder(userID uuid.UUID, orderID uuid.UUID, param model.PayOrderParam) (*model.PayOrderResponse, error) {
-	// Get the order
 	order, err := s.orderRepository.GetOrderByID(orderID)
 	if err != nil {
 		return nil, errors.New("order not found")
 	}
 
-	// Verify order belongs to user
 	if order.UserID != userID {
 		return nil, errors.New("unauthorized to pay this order")
 	}
 
-	// Check if already paid
 	if order.PaymentStatus == "paid" {
 		return nil, errors.New("order already paid")
 	}
 
-	// Get order items to reduce stock
 	orderItems, err := s.orderRepository.GetOrderItemsByOrderID(orderID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Reduce stock for each item
 	for _, item := range orderItems {
 		food, err := s.foodRepository.GetFoodByID(item.FoodID)
 		if err != nil {
 			return nil, errors.New("food not found")
 		}
 
-		// Check if stock is still available
 		if food.Stock < item.Quantity {
 			return nil, errors.New("insufficient stock for " + food.FoodName)
 		}
@@ -313,7 +308,6 @@ func (s *OrderService) PayOrder(userID uuid.UUID, orderID uuid.UUID, param model
 		}
 	}
 
-	// Update payment status
 	err = s.orderRepository.UpdateOrderPaymentStatus(orderID, "paid", param.PaymentMethod)
 	if err != nil {
 		return nil, err
@@ -327,4 +321,31 @@ func (s *OrderService) PayOrder(userID uuid.UUID, orderID uuid.UUID, param model
 	}
 
 	return response, nil
+}
+
+func (s *OrderService) UpdateOrderStatus(ownerID uuid.UUID, orderID uuid.UUID, param model.UpdateOrderStatusParam) error {
+	// Get the order
+	order, err := s.orderRepository.GetOrderByID(orderID)
+	if err != nil {
+		return errors.New("order not found")
+	}
+
+	// Get canteen owned by this user
+	canteen, err := s.adminRepository.GetCanteenByOwnerID(ownerID)
+	if err != nil {
+		return errors.New("canteen not found for this owner")
+	}
+
+	// Verify order belongs to this canteen
+	if order.CanteenID != canteen.CanteenID {
+		return errors.New("unauthorized to update this order")
+	}
+
+	// Update order status
+	err = s.orderRepository.UpdateOrderStatus(orderID, param.Status)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
