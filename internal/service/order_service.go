@@ -14,6 +14,7 @@ import (
 type IOrderService interface {
 	CreateOrder(userID uuid.UUID, param model.CreateOrderParam) (*model.CreateOrderResponse, error)
 	GetUserOrders(userID uuid.UUID) (*model.GetOrderListResponse, error)
+	GetCanteenOrders(ownerID uuid.UUID) (*model.GetOrderListResponse, error)
 }
 
 type OrderService struct {
@@ -189,6 +190,62 @@ func (s *OrderService) GetUserOrders(userID uuid.UUID) (*model.GetOrderListRespo
 			OrderID:     order.OrderID,
 			CanteenID:   order.CanteenID,
 			CanteenName: canteenName,
+			Items:       orderItemResponses,
+			TotalPrice:  order.TotalPrice,
+			Status:      order.Status,
+			CreatedAt:   order.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	response := &model.GetOrderListResponse{
+		Orders: orderResponses,
+	}
+
+	return response, nil
+}
+
+func (s *OrderService) GetCanteenOrders(ownerID uuid.UUID) (*model.GetOrderListResponse, error) {
+	// Get canteen owned by this user
+	canteen, err := s.adminRepository.GetCanteenByOwnerID(ownerID)
+	if err != nil {
+		return nil, errors.New("canteen not found for this owner")
+	}
+
+	orders, err := s.orderRepository.GetOrdersByCanteenID(canteen.CanteenID)
+	if err != nil {
+		return nil, err
+	}
+
+	orderResponses := make([]model.GetOrderResponse, 0)
+
+	for _, order := range orders {
+		orderItems, err := s.orderRepository.GetOrderItemsByOrderID(order.OrderID)
+		if err != nil {
+			return nil, err
+		}
+
+		orderItemResponses := make([]model.OrderItemResponse, 0)
+		for _, item := range orderItems {
+			food, err := s.foodRepository.GetFoodByID(item.FoodID)
+			foodName := ""
+			if err == nil {
+				foodName = food.FoodName
+			}
+
+			orderItemResponses = append(orderItemResponses, model.OrderItemResponse{
+				OrderItemID: item.OrderItemID,
+				FoodID:      item.FoodID,
+				FoodName:    foodName,
+				Quantity:    item.Quantity,
+				Price:       item.Price,
+				Subtotal:    item.Subtotal,
+			})
+		}
+
+		orderResponses = append(orderResponses, model.GetOrderResponse{
+			OrderID:     order.OrderID,
+			CanteenID:   order.CanteenID,
+			CanteenName: canteen.CanteenName,
 			Items:       orderItemResponses,
 			TotalPrice:  order.TotalPrice,
 			Status:      order.Status,

@@ -71,3 +71,24 @@ func (r *Rest) GetMyOrders(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, "orders retrieved successfully", resp)
 }
+
+func (r *Rest) GetCanteenOrders(c *gin.Context) {
+	ownerID, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "unauthorized", fmt.Errorf("user not authenticated"))
+		return
+	}
+	// Get orders for this canteen owner
+
+	resp, err := r.service.OrderService.GetCanteenOrders(ownerID.(uuid.UUID))
+	if err != nil {
+		if err.Error() == "canteen not found for this owner" {
+			response.Error(c, http.StatusNotFound, "canteen not found for this owner", err)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "failed to get canteen orders", err)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "canteen orders retrieved successfully", resp)
+}

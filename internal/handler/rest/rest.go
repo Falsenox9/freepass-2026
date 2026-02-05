@@ -59,6 +59,7 @@ func (r *Rest) MountEndPoint() {
 		canteen.DELETE("/food/:food_id", r.DeleteFood)
 		canteen.GET("/my-foods", r.GetMyFoods)
 		canteen.PATCH("/food/stock", r.UpdateStock)
+		canteen.GET("/orders", r.GetCanteenOrders)
 	}
 
 	public := baseURL.Group("/public")

@@ -12,6 +12,7 @@ type IOrderRepository interface {
 	CreateOrderItem(tx *gorm.DB, orderItem *entity.OrderItem) error
 	GetOrdersByUserID(userID uuid.UUID) ([]*entity.Order, error)
 	GetOrderItemsByOrderID(orderID uuid.UUID) ([]*entity.OrderItem, error)
+	GetOrdersByCanteenID(canteenID uuid.UUID) ([]*entity.Order, error)
 }
 
 type OrderRepository struct {
@@ -60,4 +61,15 @@ func (r *OrderRepository) GetOrderItemsByOrderID(orderID uuid.UUID) ([]*entity.O
 	}
 
 	return orderItems, nil
+}
+
+func (r *OrderRepository) GetOrdersByCanteenID(canteenID uuid.UUID) ([]*entity.Order, error) {
+	var orders []*entity.Order
+	// Get all orders for this canteen
+	err := r.db.Debug().Where("canteen_id = ?", canteenID).Order("created_at desc").Find(&orders).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }
