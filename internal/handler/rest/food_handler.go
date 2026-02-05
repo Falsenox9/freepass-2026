@@ -208,6 +208,16 @@ func (r *Rest) GetAllFoods(c *gin.Context) {
 	response.Success(c, http.StatusOK, "foods retrieved successfully", resp)
 }
 
+func (r *Rest) GetAllFoodsGroupedByCanteen(c *gin.Context) {
+	resp, err := r.service.FoodService.GetAllFoodsGroupedByCanteen()
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "failed to get foods grouped by canteen", err)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "foods grouped by canteen retrieved successfully", resp)
+}
+
 func (r *Rest) UpdateStock(c *gin.Context) {
 	var param model.UpdateStockParam
 

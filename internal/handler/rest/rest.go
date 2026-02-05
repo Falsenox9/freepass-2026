@@ -37,6 +37,8 @@ func (r *Rest) MountEndPoint() {
 	{
 		user.GET("/profile", r.GetUserProfile)
 		user.PUT("/profile", r.UpdateUserProfile)
+		user.POST("/order", r.CreateOrder)
+		user.GET("/orders", r.GetMyOrders)
 	}
 
 	admin := baseURL.Group("/admin")
@@ -62,8 +64,10 @@ func (r *Rest) MountEndPoint() {
 	public := baseURL.Group("/public")
 	{
 		public.GET("/foods", r.GetAllFoods)
+		public.GET("/foods/by-canteen", r.GetAllFoodsGroupedByCanteen)
 		public.GET("/food/:food_id", r.GetFoodByID)
 	}
+
 }
 
 func (r *Rest) Run() {

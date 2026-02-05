@@ -1,1 +1,24 @@
+# Environment variables
+.env
 *.env
+
+# IDE
+.vscode
+*.vscode
+.idea
+
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build artifacts
+*.test
+*.out
+/bin/
+/dist/
+
+# Go mod cache
+go.sum

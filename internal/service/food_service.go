@@ -19,6 +19,7 @@ type IFoodService interface {
 	GetFoodByID(foodID uuid.UUID) (*model.GetFoodResponse, error)
 	GetFoodsByCanteenOwner(ownerID uuid.UUID) (*model.GetFoodListResponse, error)
 	GetAllFoods() (*model.GetFoodListResponse, error)
+	GetAllFoodsGroupedByCanteen() (*model.GetFoodsGroupedByCanteenResponse, error)
 	UpdateStock(ownerID uuid.UUID, param model.UpdateStockParam) (*model.UpdateStockResponse, error)
 }
 
@@ -311,6 +312,51 @@ func (s *FoodService) GetAllFoods() (*model.GetFoodListResponse, error) {
 
 	response := &model.GetFoodListResponse{
 		Foods: foodInfos,
+	}
+
+	return response, nil
+}
+
+func (s *FoodService) GetAllFoodsGroupedByCanteen() (*model.GetFoodsGroupedByCanteenResponse, error) {
+	foods, err := s.foodRepository.GetAllFoods()
+	if err != nil {
+		return nil, err
+	}
+
+	canteenMap := make(map[uuid.UUID]*model.CanteenWithFoods)
+
+	for _, food := range foods {
+		if _, exists := canteenMap[food.CanteenID]; !exists {
+			canteen, err := s.adminRepository.GetCanteenByID(food.CanteenID)
+			canteenName := ""
+			if err == nil {
+				canteenName = canteen.CanteenName
+			}
+
+			canteenMap[food.CanteenID] = &model.CanteenWithFoods{
+				CanteenID:   food.CanteenID,
+				CanteenName: canteenName,
+				Foods:       make([]model.FoodInfo, 0),
+			}
+		}
+
+		canteenMap[food.CanteenID].Foods = append(canteenMap[food.CanteenID].Foods, model.FoodInfo{
+			FoodID:      food.FoodID,
+			FoodName:    food.FoodName,
+			Description: food.Description,
+			Price:       food.Price,
+			Stock:       food.Stock,
+			IsAvailable: food.IsAvailable,
+		})
+	}
+
+	canteens := make([]model.CanteenWithFoods, 0)
+	for _, canteen := range canteenMap {
+		canteens = append(canteens, *canteen)
+	}
+
+	response := &model.GetFoodsGroupedByCanteenResponse{
+		Canteens: canteens,
 	}
 
 	return response, nil

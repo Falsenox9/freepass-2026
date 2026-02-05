@@ -55,6 +55,16 @@ type GetFoodListResponse struct {
 	Foods []FoodInfo `json:"foods"`
 }
 
+type CanteenWithFoods struct {
+	CanteenID   uuid.UUID  `json:"canteen_id"`
+	CanteenName string     `json:"canteen_name"`
+	Foods       []FoodInfo `json:"foods"`
+}
+
+type GetFoodsGroupedByCanteenResponse struct {
+	Canteens []CanteenWithFoods `json:"canteens"`
+}
+
 type FoodInfo struct {
 	FoodID      uuid.UUID `json:"food_id"`
 	FoodName    string    `json:"food_name"`
