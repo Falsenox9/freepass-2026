@@ -195,3 +195,42 @@ func (r *Rest) UpdateOrderStatus(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, "order status updated successfully", nil)
 }
+
+func (r *Rest) CancelOrder(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "unauthorized", fmt.Errorf("user not authenticated"))
+		return
+	}
+
+	orderIDStr := c.Param("order_id")
+	orderID, err := uuid.Parse(orderIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid order id", err)
+		return
+	}
+
+	err = r.service.OrderService.CancelOrder(userID.(uuid.UUID), orderID)
+	if err != nil {
+		if err.Error() == "order not found" {
+			response.Error(c, http.StatusNotFound, "order not found", err)
+			return
+		}
+		if err.Error() == "unauthorized to cancel this order" {
+			response.Error(c, http.StatusForbidden, "unauthorized to cancel this order", err)
+			return
+		}
+		if err.Error() == "cannot cancel paid order" {
+			response.Error(c, http.StatusBadRequest, "cannot cancel paid order", err)
+			return
+		}
+		if err.Error() == "order already canceled" {
+			response.Error(c, http.StatusBadRequest, "order already canceled", err)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "failed to cancel order", err)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "order canceled successfully", nil)
+}

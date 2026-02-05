@@ -40,6 +40,7 @@ func (r *Rest) MountEndPoint() {
 		user.POST("/order", r.CreateOrder)
 		user.GET("/orders", r.GetMyOrders)
 		user.POST("/order/:order_id/pay", r.PayOrder)
+		user.POST("/order/:order_id/cancel", r.CancelOrder)
 	}
 
 	admin := baseURL.Group("/admin")
