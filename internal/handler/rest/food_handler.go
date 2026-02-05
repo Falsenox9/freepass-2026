@@ -254,3 +254,40 @@ func (r *Rest) UpdateStock(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, "stock updated successfully", resp)
 }
+
+func (r *Rest) UpdateCanteenStatus(c *gin.Context) {
+	var param model.UpdateCanteenStatusParam
+
+	ownerID, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "unauthorized", fmt.Errorf("user not authenticated"))
+		return
+	}
+
+	err := c.ShouldBindJSON(&param)
+	if err != nil {
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			errorMessages := make([]string, 0)
+			for _, e := range validationErrors {
+				msg := fmt.Sprintf("Field '%s' error: %s", e.Field(), e.Tag())
+				errorMessages = append(errorMessages, msg)
+			}
+			response.Error(c, http.StatusBadRequest, "invalid validation format", fmt.Errorf("%v", errorMessages))
+			return
+		}
+		response.Error(c, http.StatusBadRequest, "failed to bind json", err)
+		return
+	}
+
+	resp, err := r.service.FoodService.UpdateCanteenStatus(ownerID.(uuid.UUID), param)
+	if err != nil {
+		if err.Error() == "canteen not found" {
+			response.Error(c, http.StatusNotFound, "canteen not found", err)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "failed to update canteen status", err)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "canteen status updated successfully", resp)
+}

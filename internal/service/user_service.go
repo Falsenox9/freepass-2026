@@ -64,7 +64,7 @@ func (u *UserService) RegisterUser(param model.UserRegisterParam) (*model.UserRe
 
 	user := &entity.User{
 		UserID:   userID,
-		RoleID:   2, // Regular user role
+		RoleID:   2,
 		FullName: &param.FullName,
 		Email:    param.Email,
 		Password: hashPassword,
@@ -144,7 +144,13 @@ func (u *UserService) UpdateUserProfile(userId uuid.UUID, param model.UpdateProf
 		return nil, err
 	}
 
-	user.FullName = &param.FullName
+	if param.FullName != nil {
+		user.FullName = param.FullName
+	}
+
+	if param.Email != nil {
+		user.Email = *param.Email
+	}
 
 	tx := u.db.Begin()
 	if tx.Error != nil {

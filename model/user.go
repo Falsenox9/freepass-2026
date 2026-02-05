@@ -12,7 +12,7 @@ type UserParam struct {
 
 type UserRegisterParam struct {
 	FullName        string `json:"full_name" binding:"required"`
-	Email           string `json:"email" binding:"required,email"`
+	Email           string `json:"email" binding:"required,email,endswith=@gmail.com"`
 	Password        string `json:"password" binding:"required,min=8"`
 	ConfirmPassword string `json:"confirm_password" binding:"required,min=8"`
 }
@@ -37,7 +37,8 @@ type UserProfile struct {
 }
 
 type UpdateProfileParam struct {
-	FullName string `json:"full_name" binding:"required"`
+	FullName *string `json:"full_name" binding:"omitempty"`
+	Email    *string `json:"email" binding:"omitempty,email,endswith=@gmail.com"`
 }
 
 type UpdateProfileResponse struct {

@@ -7,17 +7,19 @@ import (
 )
 
 type Service struct {
-	UserService  IUserService
-	AdminService IAdminService
-	FoodService  IFoodService
-	OrderService IOrderService
+	UserService   IUserService
+	AdminService  IAdminService
+	FoodService   IFoodService
+	OrderService  IOrderService
+	ReviewService IReviewService
 }
 
 func NewService(repository *repository.Repository, bcrypt bcrypt.Interface, jwtAuth jwt.Interface) *Service {
 	return &Service{
-		UserService:  NewUserService(repository.UserRepository, bcrypt, jwtAuth),
-		AdminService: NewAdminService(repository.AdminRepository, repository.UserRepository, bcrypt),
-		FoodService:  NewFoodService(repository.FoodRepository, repository.AdminRepository),
-		OrderService: NewOrderService(repository.OrderRepository, repository.FoodRepository, repository.AdminRepository),
+		UserService:   NewUserService(repository.UserRepository, bcrypt, jwtAuth),
+		AdminService:  NewAdminService(repository.AdminRepository, repository.UserRepository, bcrypt),
+		FoodService:   NewFoodService(repository.FoodRepository, repository.AdminRepository),
+		OrderService:  NewOrderService(repository.OrderRepository, repository.FoodRepository, repository.AdminRepository),
+		ReviewService: NewReviewService(repository.ReviewRepository, repository.OrderRepository, repository.UserRepository, repository.AdminRepository),
 	}
 }

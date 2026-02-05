@@ -12,13 +12,15 @@ func Migrate(db *gorm.DB) error {
 		&entity.User{},
 		&entity.Canteen{},
 		&entity.Food{},
+		&entity.Order{},
+		&entity.OrderItem{},
+		&entity.Review{},
 	)
 
 	if err != nil {
 		return err
 	}
 
-	// Seed roles if not exists
 	err = seedRoles(db)
 	if err != nil {
 		return err
@@ -35,11 +37,9 @@ func seedRoles(db *gorm.DB) error {
 	}
 
 	for _, role := range roles {
-		// Check if role already exists
 		var existingRole entity.Role
 		result := db.Where("role_id = ?", role.RoleID).First(&existingRole)
 
-		// If not found, create it
 		if result.Error == gorm.ErrRecordNotFound {
 			if err := db.Create(&role).Error; err != nil {
 				return err

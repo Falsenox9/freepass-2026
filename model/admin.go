@@ -4,7 +4,7 @@ import "github.com/google/uuid"
 
 type CreateCanteenOwnerParam struct {
 	FullName        string `json:"full_name" binding:"required"`
-	Email           string `json:"email" binding:"required,email"`
+	Email           string `json:"email" binding:"required,email,endswith=@gmail.com"`
 	Password        string `json:"password" binding:"required,min=8"`
 	ConfirmPassword string `json:"confirm_password" binding:"required,min=8"`
 	CanteenName     string `json:"canteen_name" binding:"required"`
@@ -19,9 +19,9 @@ type CreateCanteenOwnerResponse struct {
 
 type UpdateCanteenOwnerParam struct {
 	UserID      uuid.UUID `json:"user_id" binding:"required"`
-	FullName    string    `json:"full_name"`
-	Email       string    `json:"email,omitempty" binding:"omitempty,email"`
-	CanteenName string    `json:"canteen_name"`
+	FullName    *string   `json:"full_name" binding:"omitempty"`
+	Email       *string   `json:"email" binding:"omitempty,email,endswith=@gmail.com"`
+	CanteenName *string   `json:"canteen_name" binding:"omitempty"`
 }
 
 type UpdateCanteenOwnerResponse struct {

@@ -16,6 +16,7 @@ type IAdminRepository interface {
 	GetCanteenByID(canteenID uuid.UUID) (*entity.Canteen, error)
 	GetAllUsers() ([]*entity.User, error)
 	UpdateCanteenInfo(tx *gorm.DB, canteen *entity.Canteen) error
+	UpdateCanteenStatus(tx *gorm.DB, canteenID uuid.UUID, isOpen bool) error
 }
 
 type AdminRepository struct {
@@ -111,6 +112,15 @@ func (r *AdminRepository) GetAllUsers() ([]*entity.User, error) {
 
 func (r *AdminRepository) UpdateCanteenInfo(tx *gorm.DB, canteen *entity.Canteen) error {
 	err := tx.Debug().Model(&entity.Canteen{}).Where("canteen_id = ?", canteen.CanteenID).Updates(canteen).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *AdminRepository) UpdateCanteenStatus(tx *gorm.DB, canteenID uuid.UUID, isOpen bool) error {
+	err := tx.Debug().Model(&entity.Canteen{}).Where("canteen_id = ?", canteenID).Update("is_open", isOpen).Error
 	if err != nil {
 		return err
 	}

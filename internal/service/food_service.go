@@ -21,6 +21,7 @@ type IFoodService interface {
 	GetAllFoods() (*model.GetFoodListResponse, error)
 	GetAllFoodsGroupedByCanteen() (*model.GetFoodsGroupedByCanteenResponse, error)
 	UpdateStock(ownerID uuid.UUID, param model.UpdateStockParam) (*model.UpdateStockResponse, error)
+	UpdateCanteenStatus(ownerID uuid.UUID, param model.UpdateCanteenStatusParam) (*model.UpdateCanteenStatusResponse, error)
 }
 
 type FoodService struct {
@@ -162,8 +163,8 @@ func (s *FoodService) UpdateFood(ownerID uuid.UUID, param model.UpdateFoodParam)
 		return nil, errors.New("food not found")
 	}
 
-	if param.FoodName != "" {
-		existingFood.FoodName = param.FoodName
+	if param.FoodName != nil {
+		existingFood.FoodName = *param.FoodName
 	}
 	if param.Description != nil {
 		existingFood.Description = param.Description
@@ -241,7 +242,6 @@ func (s *FoodService) GetFoodByID(foodID uuid.UUID) (*model.GetFoodResponse, err
 		return nil, errors.New("food not found")
 	}
 
-	// Get canteen info by canteen ID
 	canteen, err := s.adminRepository.GetCanteenByID(food.CanteenID)
 	canteenName := ""
 	if err == nil && canteen != nil {
@@ -392,6 +392,46 @@ func (s *FoodService) UpdateStock(ownerID uuid.UUID, param model.UpdateStockPara
 	response := &model.UpdateStockResponse{
 		FoodID: param.FoodID,
 		Stock:  param.Stock,
+	}
+
+	return response, nil
+}
+
+func (s *FoodService) UpdateCanteenStatus(ownerID uuid.UUID, param model.UpdateCanteenStatusParam) (*model.UpdateCanteenStatusResponse, error) {
+	canteen, err := s.adminRepository.GetCanteenByOwnerID(ownerID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("canteen not found")
+		}
+		return nil, err
+	}
+
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	err = s.adminRepository.UpdateCanteenStatus(tx, canteen.CanteenID, param.IsOpen)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Commit().Error
+	if err != nil {
+		return nil, err
+	}
+
+	response := &model.UpdateCanteenStatusResponse{
+		CanteenID:   canteen.CanteenID,
+		CanteenName: canteen.CanteenName,
+		IsOpen:      param.IsOpen,
 	}
 
 	return response, nil

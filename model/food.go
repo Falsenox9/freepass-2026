@@ -30,7 +30,7 @@ type BulkCreateFoodResponse struct {
 
 type UpdateFoodParam struct {
 	FoodID      uuid.UUID `json:"food_id" binding:"required"`
-	FoodName    string    `json:"food_name"`
+	FoodName    *string   `json:"food_name" binding:"omitempty"`
 	Description *string   `json:"description"`
 	Price       *int      `json:"price" binding:"omitempty,min=0"`
 	Stock       *int      `json:"stock" binding:"omitempty,min=0"`
@@ -93,4 +93,14 @@ type UpdateStockParam struct {
 type UpdateStockResponse struct {
 	FoodID uuid.UUID `json:"food_id"`
 	Stock  int       `json:"stock"`
+}
+
+type UpdateCanteenStatusParam struct {
+	IsOpen bool `json:"is_open" binding:"required"`
+}
+
+type UpdateCanteenStatusResponse struct {
+	CanteenID   uuid.UUID `json:"canteen_id"`
+	CanteenName string    `json:"canteen_name"`
+	IsOpen      bool      `json:"is_open"`
 }

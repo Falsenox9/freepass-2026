@@ -3,17 +3,19 @@ package repository
 import "gorm.io/gorm"
 
 type Repository struct {
-	UserRepository  IUserRepository
-	AdminRepository IAdminRepository
-	FoodRepository  IFoodRepository
-	OrderRepository IOrderRepository
+	UserRepository   IUserRepository
+	AdminRepository  IAdminRepository
+	FoodRepository   IFoodRepository
+	OrderRepository  IOrderRepository
+	ReviewRepository IReviewRepository
 }
 
 func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{
-		UserRepository:  NewUserRepository(db),
-		AdminRepository: NewAdminRepository(db),
-		FoodRepository:  NewFoodRepository(db),
-		OrderRepository: NewOrderRepository(db),
+		UserRepository:   NewUserRepository(db),
+		AdminRepository:  NewAdminRepository(db),
+		FoodRepository:   NewFoodRepository(db),
+		OrderRepository:  NewOrderRepository(db),
+		ReviewRepository: NewReviewRepository(db),
 	}
 }

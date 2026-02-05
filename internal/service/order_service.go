@@ -99,6 +99,15 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, param model.CreateOrderPara
 		})
 	}
 
+	canteen, err := s.adminRepository.GetCanteenByID(canteenID)
+	if err != nil {
+		return nil, errors.New("canteen not found")
+	}
+
+	if !canteen.IsOpen {
+		return nil, errors.New("canteen is currently closed")
+	}
+
 	orderID, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
@@ -339,7 +348,6 @@ func (s *OrderService) UpdateOrderStatus(ownerID uuid.UUID, orderID uuid.UUID, p
 		return errors.New("unauthorized to update this order")
 	}
 
-	// Update order status
 	err = s.orderRepository.UpdateOrderStatus(orderID, param.Status)
 	if err != nil {
 		return err
@@ -349,28 +357,23 @@ func (s *OrderService) UpdateOrderStatus(ownerID uuid.UUID, orderID uuid.UUID, p
 }
 
 func (s *OrderService) CancelOrder(userID uuid.UUID, orderID uuid.UUID) error {
-	// Get the order
 	order, err := s.orderRepository.GetOrderByID(orderID)
 	if err != nil {
 		return errors.New("order not found")
 	}
 
-	// Verify order belongs to user
 	if order.UserID != userID {
 		return errors.New("unauthorized to cancel this order")
 	}
 
-	// Check if order is already paid
 	if order.PaymentStatus == "paid" {
 		return errors.New("cannot cancel paid order")
 	}
 
-	// Check if order is already canceled
 	if order.Status == "canceled" {
 		return errors.New("order already canceled")
 	}
 
-	// Update order status to canceled
 	err = s.orderRepository.UpdateOrderStatus(orderID, "canceled")
 	if err != nil {
 		return err

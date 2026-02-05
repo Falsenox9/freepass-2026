@@ -41,6 +41,7 @@ func (r *Rest) MountEndPoint() {
 		user.GET("/orders", r.GetMyOrders)
 		user.POST("/order/:order_id/pay", r.PayOrder)
 		user.POST("/order/:order_id/cancel", r.CancelOrder)
+		user.POST("/order/:order_id/review", r.CreateReview)
 	}
 
 	admin := baseURL.Group("/admin")
@@ -61,8 +62,11 @@ func (r *Rest) MountEndPoint() {
 		canteen.DELETE("/food/:food_id", r.DeleteFood)
 		canteen.GET("/my-foods", r.GetMyFoods)
 		canteen.PATCH("/food/stock", r.UpdateStock)
+		canteen.PATCH("/status", r.UpdateCanteenStatus)
 		canteen.GET("/orders", r.GetCanteenOrders)
 		canteen.PATCH("/order/:order_id/status", r.UpdateOrderStatus)
+		canteen.GET("/reviews", r.GetCanteenReviews)
+		canteen.DELETE("/review/:review_id", r.DeleteReview)
 	}
 
 	public := baseURL.Group("/public")
@@ -70,6 +74,7 @@ func (r *Rest) MountEndPoint() {
 		public.GET("/foods", r.GetAllFoods)
 		public.GET("/foods/by-canteen", r.GetAllFoodsGroupedByCanteen)
 		public.GET("/food/:food_id", r.GetFoodByID)
+		public.GET("/canteen/:canteen_id/reviews", r.GetPublicCanteenReviews)
 	}
 
 }

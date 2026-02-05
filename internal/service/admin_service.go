@@ -112,29 +112,29 @@ func (s *AdminService) UpdateCanteenOwner(param model.UpdateCanteenOwnerParam) (
 		return nil, errors.New("user is not a canteen owner")
 	}
 
-	if param.Email != "" && param.Email != existingUser.Email {
+	if param.Email != nil && *param.Email != existingUser.Email {
 		_, err := s.userRepository.GetUser(model.UserParam{
-			Email: param.Email,
+			Email: *param.Email,
 		})
 		if err == nil {
 			return nil, errors.New("email already exists")
 		}
 	}
 
-	if param.FullName != "" {
-		existingUser.FullName = &param.FullName
+	if param.FullName != nil {
+		existingUser.FullName = param.FullName
 	}
-	if param.Email != "" {
-		existingUser.Email = param.Email
+	if param.Email != nil {
+		existingUser.Email = *param.Email
 	}
 
 	var canteen *entity.Canteen
-	if param.CanteenName != "" {
+	if param.CanteenName != nil {
 		canteen, err = s.adminRepository.GetCanteenByOwnerID(param.UserID)
 		if err != nil {
 			return nil, errors.New("canteen not found")
 		}
-		canteen.CanteenName = param.CanteenName
+		canteen.CanteenName = *param.CanteenName
 	}
 
 	err = s.adminRepository.UpdateCanteenOwner(tx, existingUser, canteen)
