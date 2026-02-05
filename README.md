@@ -154,7 +154,60 @@ The implementation of this project MUST be in the form of a REST, gRPC, or Graph
 
 ## **🧪** API Installation
 
-> Write how to run your service in a local or development environment here. If you use Docker to serve your DBMS or your server, you will receive bonus points for your submission.
+### Prerequisites
+- Go 1.25.6 or higher
+- MariaDB 10.x or higher
+- Git
+- Gin Web Framework
+- GORM (Go ORM)
+
+### Step-by-Step Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd freepass-2026
+   ```
+
+2. **Install Go dependencies (including Gin and GORM)**
+   ```bash
+   go mod download
+   go get -u github.com/gin-gonic/gin
+   go get -u gorm.io/gorm
+   go get -u gorm.io/driver/mysql
+   ```
+
+3. **Setup MariaDB Database**
+   - Create a new database named `bcc-canteen`
+   ```sql
+   CREATE DATABASE `bcc-canteen` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+
+4. **Configure Environment Variables**
+   - Create a `.env` file in the root directory
+   - Update the `.env` file with your database credentials:
+   ```env
+   DB_USERNAME=root
+   DB_PASSWORD=your_password
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_NAME=bcc-canteen
+   JWT_SECRET=JWT-Secret-Key
+   ```
+
+5. **Run Database Migration**
+   - The migration will run automatically when you start the server
+   - It will create all necessary tables and seed default roles
+
+6. **Start the Server**
+   ```bash
+   go run cmd/app/main.go
+   ```
+   - Server will run on `http://localhost:8080`
+
+7. **Test the API**
+   - Use Postman, Insomnia, or any REST client
+   - Base URL: `http://localhost:8080/api/v1`
 
 ## **📞** Contact
 
